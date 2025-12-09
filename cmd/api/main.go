@@ -42,7 +42,7 @@ func main() {
 	sessionRepo := postgres.NewSessionRepo(db)
 	ticketRepo := postgres.NewTicketRepo(db)
 
-	var notifier driven.NotificationSender // если хочешь, можешь явно типом порт указать
+	var notifier driven.NotificationSender
 	amqpSender, err := notification.NewAMQPNotificationSender(cfg.AMQP_URL, cfg.AMQP_QUEUE)
 	if err != nil {
 		log.Printf("⚠ could not init notifier: %v (notifications disabled)", err)
@@ -56,7 +56,7 @@ func main() {
 
 	movieUC := usecase.NewMovieService(movieRepo)
 	sessionUC := usecase.NewSessionService(sessionRepo)
-	ticketUC := usecase.NewTicketService(ticketRepo, sessionRepo, notifier)
+	ticketUC := usecase.NewTicketService(ticketRepo, sessionRepo, movieRepo, notifier)
 
 	r := driving.SetupRouter(movieUC, sessionUC, ticketUC)
 

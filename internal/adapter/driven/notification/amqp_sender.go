@@ -48,7 +48,6 @@ func NewAMQPNotificationSender(amqpURL, queueName string) (*amqpNotificationSend
 	}, nil
 }
 
-// Желательно вызвать при завершении сервиса, но для диплома можно и не дергать
 func (s *amqpNotificationSender) Close() {
 	if s.channel != nil {
 		_ = s.channel.Close()
@@ -64,13 +63,13 @@ type emailMessage struct {
 	Body      string `json:"body"`
 }
 
-func (s *amqpNotificationSender) SendTicketBoughtNotification(t domain.Ticket) error {
+func (s *amqpNotificationSender) SendTicketBoughtNotification(t domain.Ticket, movieTitle string) error {
 	msg := emailMessage{
 		Recipient: t.Email,
-		Subject:   "Покупка билета в кино",
+		Subject:   "Вы купили билет в кино!",
 		Body: fmt.Sprintf(
-			"Вы купили билет на сеанс %d.\nРяд: %d, место: %d.",
-			t.SessionID, t.Row, t.Seat,
+			"Фильм: %s\nСеанс № %d\nРяд: %d\nМесто: %d\n\nСпасибо за покупку!",
+			movieTitle, t.SessionID, t.Row, t.Seat,
 		),
 	}
 

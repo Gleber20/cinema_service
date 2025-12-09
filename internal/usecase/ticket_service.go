@@ -5,22 +5,26 @@ import (
 	"cinema_service/internal/port/driven"
 	"cinema_service/internal/port/usecase"
 	"errors"
+	"fmt"
 )
 
 type ticketService struct {
 	ticketRepo  driven.TicketRepository
 	sessionRepo driven.SessionRepository
+	movieRepo   driven.MovieRepository
 	notifier    driven.NotificationSender
 }
 
 func NewTicketService(
 	ticketRepo driven.TicketRepository,
 	sessionRepo driven.SessionRepository,
+	movieRepo driven.MovieRepository,
 	notifier driven.NotificationSender,
 ) usecase.TicketUseCase {
 	return &ticketService{
 		ticketRepo:  ticketRepo,
 		sessionRepo: sessionRepo,
+		movieRepo:   movieRepo,
 		notifier:    notifier,
 	}
 }
@@ -60,9 +64,27 @@ func (s *ticketService) BuyTicket(t domain.Ticket) (int, error) {
 
 	t.ID = id
 
-	// 5. Отправляем уведомление (ошибку игнорируем, чтобы не ломать покупку)
+	// 4.1. Достаём фильм по MovieID из сеанса
+	movie, err := s.movieRepo.GetByID(session.MovieID)
+	if err != nil {
+		return 0, err
+	}
+	if movie == nil {
+		// чтобы не ломать покупку из-за уведомления, можно просто залогировать
+		fmt.Println("movie not found for session:", session.ID)
+		// и вернуть id без письма
+		return id, nil
+	}
+
+	// 5. Отправляем уведомление
 	if s.notifier != nil {
-		_ = s.notifier.SendTicketBoughtNotification(t)
+		if err := s.notifier.SendTicketBoughtNotification(t, movie.Title); err != nil {
+			fmt.Println("failed to send notification:", err)
+		} else {
+			fmt.Printf("notification sent for ticket %d (movie %q)\n", t.ID, movie.Title)
+		}
+	} else {
+		fmt.Println("notifier is nil, skipping notification")
 	}
 
 	return id, nil
